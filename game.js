@@ -1,0 +1,391 @@
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+const scoreEl = document.getElementById('score');
+const highScoreEl = document.getElementById('highScore');
+const startScreen = document.getElementById('startScreen');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const finalScoreEl = document.getElementById('finalScore');
+const startBtn = document.getElementById('startBtn');
+const restartBtn = document.getElementById('restartBtn');
+
+let gameState = 'start';
+let score = 0;
+let highScore = parseInt(localStorage.getItem('fartRocketHighScore')) || 0;
+let gameSpeed = 3;
+let frameCount = 0;
+
+highScoreEl.textContent = `Best: ${highScore}`;
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
+
+class Player {
+    constructor() {
+        this.width = 40;
+        this.height = 60;
+        this.x = canvas.width * 0.2;
+        this.y = canvas.height / 2;
+        this.velocity = 0;
+        this.gravity = 0.5;
+        this.boost = -12;
+        this.isBoosting = false;
+    }
+
+    update() {
+        this.velocity += this.gravity;
+        this.y += this.velocity;
+
+        if (this.y < 0) {
+            this.y = 0;
+            this.velocity = 0;
+        }
+        if (this.y + this.height > canvas.height) {
+            gameOver();
+        }
+    }
+
+    boostUp() {
+        this.velocity = this.boost;
+        this.isBoosting = true;
+        for (let i = 0; i < 5; i++) {
+            particles.push(new Particle(this.x, this.y + this.height, 'fart'));
+        }
+    }
+
+    draw() {
+        ctx.save();
+        
+        ctx.fillStyle = '#e0e0e0';
+        ctx.beginPath();
+        ctx.ellipse(this.x + this.width/2, this.y + this.height/2, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.moveTo(this.x + this.width/2, this.y);
+        ctx.lineTo(this.x + this.width/2 - 10, this.y + 15);
+        ctx.lineTo(this.x + this.width/2 + 10, this.y + 15);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#444';
+        ctx.fillRect(this.x + this.width/2 - 3, this.y + 20, 6, 15);
+
+        ctx.fillStyle = '#ffcc00';
+        ctx.fillRect(this.x + this.width/2 + 5, this.y + 10, 8, 5);
+        ctx.fillRect(this.x + this.width/2 - 13, this.y + 10, 8, 5);
+
+        ctx.fillStyle = '#87CEEB';
+        ctx.beginPath();
+        ctx.arc(this.x + this.width/2 - 8, this.y + 30, 5, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width/2 + 8, this.y + 30, 5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#333';
+        ctx.beginPath();
+        ctx.arc(this.x + this.width/2 - 8, this.y + 30, 2, 0, Math.PI * 2);
+        ctx.arc(this.x + this.width/2 + 8, this.y + 30, 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+class Obstacle {
+    constructor() {
+        this.width = 50 + Math.random() * 30;
+        this.height = 40 + Math.random() * 30;
+        this.x = canvas.width;
+        this.y = Math.random() * (canvas.height - this.height);
+        this.type = Math.random() > 0.5 ? 'cloud' : 'bird';
+        this.color = this.type === 'cloud' ? '#ffffff' : '#ff6b6b';
+    }
+
+    update() {
+        this.x -= gameSpeed;
+    }
+
+    draw() {
+        ctx.save();
+        if (this.type === 'cloud') {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            ctx.beginPath();
+            ctx.arc(this.x + this.width/2, this.y + this.height/2, this.width/3, 0, Math.PI * 2);
+            ctx.arc(this.x + this.width/3, this.y + this.height/2 - 5, this.width/4, 0, Math.PI * 2);
+            ctx.arc(this.x + this.width*2/3, this.y + this.height/2 - 5, this.width/4, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            ctx.fillStyle = this.color;
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y + this.height/2);
+            ctx.quadraticCurveTo(this.x + this.width/2, this.y, this.x + this.width, this.y + this.height/2);
+            ctx.quadraticCurveTo(this.x + this.width/2, this.y + this.height, this.x, this.y + this.height/2);
+            ctx.fill();
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.arc(this.x + 15, this.y + this.height/2 - 3, 3, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        ctx.restore();
+    }
+}
+
+class Star {
+    constructor() {
+        this.size = 20;
+        this.x = canvas.width;
+        this.y = Math.random() * (canvas.height - 100) + 50;
+        this.rotation = 0;
+        this.color = `hsl(${Math.random() * 360}, 100%, 60%)`;
+    }
+
+    update() {
+        this.x -= gameSpeed;
+        this.rotation += 0.05;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        
+        const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, this.size);
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(1, 'transparent');
+        ctx.fillStyle = gradient;
+        
+        ctx.beginPath();
+        for (let i = 0; i < 5; i++) {
+            const angle = (i * 4 * Math.PI) / 5;
+            const radius = i % 2 === 0 ? this.size : this.size / 2;
+            if (i === 0) ctx.moveTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+            else ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+        }
+        ctx.closePath();
+        ctx.fill();
+        
+        ctx.restore();
+    }
+}
+
+class Particle {
+    constructor(x, y, type) {
+        this.x = x;
+        this.y = y;
+        this.size = Math.random() * 15 + 5;
+        this.speedX = Math.random() * -3 - 1;
+        this.speedY = (Math.random() - 0.5) * 2;
+        this.opacity = 1;
+        this.type = type;
+        
+        if (type === 'fart') {
+            const colors = ['#FFB6C1', '#FFC0CB', '#FFDAB9', '#FFFACD', '#E6E6FA'];
+            this.color = colors[Math.floor(Math.random() * colors.length)];
+        }
+    }
+
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        this.opacity -= 0.02;
+        this.size += 0.3;
+    }
+
+    draw() {
+        ctx.save();
+        ctx.globalAlpha = this.opacity;
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+let player;
+let obstacles = [];
+let stars = [];
+let particles = [];
+let obstacleTimer = 0;
+let starTimer = 0;
+
+function init() {
+    player = new Player();
+    obstacles = [];
+    stars = [];
+    particles = [];
+    score = 0;
+    gameSpeed = 3;
+    obstacleTimer = 0;
+    starTimer = 0;
+    frameCount = 0;
+    scoreEl.textContent = `Score: ${score}`;
+}
+
+function spawnObstacle() {
+    obstacles.push(new Obstacle());
+}
+
+function spawnStar() {
+    stars.push(new Star());
+}
+
+function checkCollision(rect1, rect2) {
+    return rect1.x < rect2.x + rect2.width &&
+           rect1.x + rect1.width > rect2.x &&
+           rect1.y < rect2.y + rect2.height &&
+           rect1.y + rect1.height > rect2.y;
+}
+
+function drawBackground() {
+    const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, '#87CEEB');
+    gradient.addColorStop(0.5, '#E6E6FA');
+    gradient.addColorStop(1, '#DDA0DD');
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+    for (let i = 0; i < 5; i++) {
+        const x = ((frameCount * 0.5 + i * 200) % (canvas.width + 100)) - 50;
+        const y = 50 + i * 80;
+        ctx.beginPath();
+        ctx.arc(x, y, 30, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function update() {
+    if (gameState !== 'playing') return;
+
+    frameCount++;
+    
+    if (frameCount % 500 === 0) {
+        gameSpeed += 0.3;
+    }
+
+    player.update();
+
+    obstacleTimer++;
+    if (obstacleTimer > 100 - gameSpeed * 5) {
+        spawnObstacle();
+        obstacleTimer = 0;
+    }
+
+    starTimer++;
+    if (starTimer > 80) {
+        spawnStar();
+        starTimer = 0;
+    }
+
+    for (let i = obstacles.length - 1; i >= 0; i--) {
+        obstacles[i].update();
+        if (obstacles[i].x + obstacles[i].width < 0) {
+            obstacles.splice(i, 1);
+            continue;
+        }
+        if (checkCollision(player, obstacles[i])) {
+            gameOver();
+            return;
+        }
+    }
+
+    for (let i = stars.length - 1; i >= 0; i--) {
+        stars[i].update();
+        if (stars[i].x + stars[i].size < 0) {
+            stars.splice(i, 1);
+            continue;
+        }
+        const starRect = { x: stars[i].x - stars[i].size, y: stars[i].y - stars[i].size, width: stars[i].size * 2, height: stars[i].size * 2 };
+        if (checkCollision(player, starRect)) {
+            score += 10;
+            scoreEl.textContent = `Score: ${score}`;
+            for (let j = 0; j < 8; j++) {
+                particles.push(new Particle(stars[i].x, stars[i].y, 'star'));
+            }
+            stars.splice(i, 1);
+        }
+    }
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update();
+        if (particles[i].opacity <= 0) {
+            particles.splice(i, 1);
+        }
+    }
+
+    score++;
+    if (score % 10 === 0) {
+        scoreEl.textContent = `Score: ${score}`;
+    }
+}
+
+function draw() {
+    drawBackground();
+
+    particles.forEach(p => p.draw());
+    stars.forEach(s => s.draw());
+    obstacles.forEach(o => o.draw());
+    
+    if (gameState === 'playing') {
+        player.draw();
+    }
+}
+
+function gameLoop() {
+    update();
+    draw();
+    requestAnimationFrame(gameLoop);
+}
+
+function startGame() {
+    gameState = 'playing';
+    startScreen.classList.add('hidden');
+    gameOverScreen.classList.add('hidden');
+    init();
+}
+
+function gameOver() {
+    gameState = 'gameover';
+    
+    if (score > highScore) {
+        highScore = score;
+        localStorage.setItem('fartRocketHighScore', highScore);
+        highScoreEl.textContent = `Best: ${highScore}`;
+    }
+    
+    finalScoreEl.textContent = `Score: ${score}`;
+    gameOverScreen.classList.remove('hidden');
+}
+
+function handleInput(e) {
+    if ((e.type === 'keydown' && e.code === 'Space') || 
+        (e.type === 'click' || e.type === 'touchstart')) {
+        if (gameState === 'playing') {
+            player.boostUp();
+        }
+    }
+}
+
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space') {
+        e.preventDefault();
+        handleInput(e);
+    }
+});
+
+canvas.addEventListener('click', handleInput);
+canvas.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    handleInput(e);
+});
+
+startBtn.addEventListener('click', startGame);
+restartBtn.addEventListener('click', startGame);
+
+gameLoop();

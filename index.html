@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Fart Rocket 🚀💨</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="ui">
+        <div id="score">Score: 0</div>
+        <div id="highScore">Best: 0</div>
+    </div>
+    <div id="startScreen" class="screen">
+        <h1>💨 FART ROCKET 💨</h1>
+        <p>Click or press SPACE to boost!</p>
+        <p>Avoid obstacles. Collect stars.</p>
+        <button id="startBtn">START GAME</button>
+    </div>
+    <div id="gameOverScreen" class="screen hidden">
+        <h1>GAME OVER</h1>
+        <p id="finalScore">Score: 0</p>
+        <button id="restartBtn">PLAY AGAIN</button>
+    </div>
+    <script src="game.js"></script>
+</body>
+</html>
