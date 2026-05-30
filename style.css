@@ -167,24 +167,24 @@ body {
     color: rgba(255,255,255,0.9);
 }
 
-#leaderboard {
+#leaderboard, #startLeaderboard {
     margin: 10px 0;
     width: 320px;
     max-width: 85vw;
 }
 
-#leaderboard h2 {
+#leaderboard h2, #startLeaderboard h2 {
     font-size: 22px;
     color: white;
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
     margin-bottom: 8px;
 }
 
-#leaderboardEntries {
+#leaderboardEntries, #startLeaderboardEntries {
     background: rgba(0,0,0,0.25);
     border-radius: 12px;
     padding: 8px 0;
-    max-height: 260px;
+    max-height: 220px;
     overflow-y: auto;
 }
 

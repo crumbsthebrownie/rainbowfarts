@@ -12,6 +12,7 @@ const nicknameInput = document.getElementById('nicknameInput');
 const submitScoreBtn = document.getElementById('submitScoreBtn');
 const submitStatus = document.getElementById('submitStatus');
 const leaderboardEntries = document.getElementById('leaderboardEntries');
+const startLeaderboardEntries = document.getElementById('startLeaderboardEntries');
 
 const API_URL = 'https://fart-rocket-leaderboard.ian-link.workers.dev/api/scores';
 
@@ -264,21 +265,21 @@ async function submitScore(name, score) {
 }
 
 function renderLeaderboard(scores) {
-  if (!scores || scores.length === 0) {
-    leaderboardEntries.innerHTML = '<div class="lb-empty">No scores yet — be the first!</div>';
-    return;
-  }
+  const html = !scores || scores.length === 0
+    ? '<div class="lb-empty">No scores yet — be the first!</div>'
+    : scores
+      .map((s, i) => {
+        const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+        return `<div class="lb-entry">
+          <span class="lb-rank ${rankClass}">#${i + 1}</span>
+          <span class="lb-name">${escapeHtml(s.name)}</span>
+          <span class="lb-score">${s.score.toLocaleString()}</span>
+        </div>`;
+      })
+      .join('');
 
-  leaderboardEntries.innerHTML = scores
-    .map((s, i) => {
-      const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
-      return `<div class="lb-entry">
-        <span class="lb-rank ${rankClass}">#${i + 1}</span>
-        <span class="lb-name">${escapeHtml(s.name)}</span>
-        <span class="lb-score">${s.score.toLocaleString()}</span>
-      </div>`;
-    })
-    .join('');
+  leaderboardEntries.innerHTML = html;
+  if (startLeaderboardEntries) startLeaderboardEntries.innerHTML = html;
 }
 
 function escapeHtml(str) {
@@ -442,6 +443,7 @@ function startGame() {
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     init();
+    fetchLeaderboard().then((scores) => renderLeaderboard(scores));
 }
 
 function gameOver() {
@@ -523,5 +525,7 @@ canvas.addEventListener('touchstart', (e) => {
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 submitScoreBtn.addEventListener('click', handleScoreSubmit);
+
+fetchLeaderboard().then((scores) => renderLeaderboard(scores));
 
 gameLoop();
