@@ -13,6 +13,7 @@ const submitScoreBtn = document.getElementById('submitScoreBtn');
 const submitStatus = document.getElementById('submitStatus');
 const leaderboardEntries = document.getElementById('leaderboardEntries');
 const startLeaderboardEntries = document.getElementById('startLeaderboardEntries');
+const pauseBtn = document.getElementById('pauseBtn');
 
 const API_URL = 'https://fart-rocket-leaderboard.ian-link.workers.dev/api/scores';
 
@@ -339,6 +340,7 @@ function update() {
         countdownTimer--;
         if (countdownTimer <= 0) {
             gameState = 'playing';
+            pauseBtn.classList.remove('hidden');
         }
         return;
     }
@@ -413,7 +415,7 @@ function draw() {
     stars.forEach(s => s.draw());
     obstacles.forEach(o => o.draw());
     
-    if (gameState === 'playing' || gameState === 'countdown') {
+    if (gameState === 'playing' || gameState === 'countdown' || gameState === 'paused') {
         player.draw();
     }
 
@@ -427,6 +429,20 @@ function draw() {
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(seconds, canvas.width / 2, canvas.height / 2);
+        ctx.restore();
+    }
+
+    if (gameState === 'paused') {
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 72px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('PAUSED', canvas.width / 2, canvas.height / 2 - 20);
+        ctx.font = '24px Arial';
+        ctx.fillText('Press Esc or tap ▶ to resume', canvas.width / 2, canvas.height / 2 + 40);
         ctx.restore();
     }
 }
@@ -448,6 +464,8 @@ function startGame() {
 
 function gameOver() {
     gameState = 'gameover';
+    pauseBtn.classList.add('hidden');
+    pauseBtn.textContent = '⏸';
     scoreSubmitted = false;
 
     if (score > highScore) {
@@ -468,6 +486,16 @@ function gameOver() {
     gameOverScreen.classList.remove('hidden');
 
     fetchLeaderboard().then((scores) => renderLeaderboard(scores));
+}
+
+function togglePause() {
+    if (gameState === 'playing') {
+        gameState = 'paused';
+        pauseBtn.textContent = '▶';
+    } else if (gameState === 'paused') {
+        gameState = 'playing';
+        pauseBtn.textContent = '⏸';
+    }
 }
 
 async function handleScoreSubmit() {
@@ -514,6 +542,9 @@ document.addEventListener('keydown', (e) => {
         e.preventDefault();
         handleInput(e);
     }
+    if (e.code === 'Escape') {
+        togglePause();
+    }
 });
 
 canvas.addEventListener('click', handleInput);
@@ -522,6 +553,7 @@ canvas.addEventListener('touchstart', (e) => {
     handleInput(e);
 });
 
+pauseBtn.addEventListener('click', togglePause);
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
 submitScoreBtn.addEventListener('click', handleScoreSubmit);
