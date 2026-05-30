@@ -1,0 +1,7 @@
+name = "fart-rocket-leaderboard"
+main = "index.js"
+compatibility_date = "2026-05-30"
+
+[[kv_namespaces]]
+binding = "SCOREBOARD"
+id = "4a291dedcc5d4abca132df8b0fcf3fd4"

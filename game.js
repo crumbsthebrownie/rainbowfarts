@@ -8,6 +8,22 @@ const gameOverScreen = document.getElementById('gameOverScreen');
 const finalScoreEl = document.getElementById('finalScore');
 const startBtn = document.getElementById('startBtn');
 const restartBtn = document.getElementById('restartBtn');
+const nicknameInput = document.getElementById('nicknameInput');
+const submitScoreBtn = document.getElementById('submitScoreBtn');
+const submitStatus = document.getElementById('submitStatus');
+const leaderboardEntries = document.getElementById('leaderboardEntries');
+
+const API_URL = 'https://fart-rocket-leaderboard.ian-link.workers.dev/api/scores';
+
+const SILLY_NAMES = [
+  'Captain Farts', 'Star Sniffer', 'Cloud Crusher',
+  'Rainbow Rocket', 'Poochie Power', 'Mega Fartron',
+  'Sky Banana', 'Cosmic Pooper', 'Fluffy Destroyer',
+  'Super SBD', 'The Brown Bomber', 'Gas Giant',
+  'Booty Blaster', 'Thunder Bum', "Neptune's Nose",
+  'Flatulon', 'Rocket Rump', 'The Wind Master',
+  'Stink Star', 'Pluto\'s Pet',
+];
 
 let gameState = 'start';
 let score = 0;
@@ -213,6 +229,62 @@ let stars = [];
 let particles = [];
 let obstacleTimer = 0;
 let starTimer = 0;
+let currentSillyName = '';
+let scoreSubmitted = false;
+
+function generateSillyName() {
+  const name = SILLY_NAMES[Math.floor(Math.random() * SILLY_NAMES.length)];
+  const num = Math.floor(Math.random() * 900) + 100;
+  return `${name}#${num}`;
+}
+
+async function fetchLeaderboard() {
+  try {
+    const res = await fetch(API_URL);
+    if (!res.ok) return [];
+    return await res.json();
+  } catch {
+    return [];
+  }
+}
+
+async function submitScore(name, score) {
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, score }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
+function renderLeaderboard(scores) {
+  if (!scores || scores.length === 0) {
+    leaderboardEntries.innerHTML = '<div class="lb-empty">No scores yet — be the first!</div>';
+    return;
+  }
+
+  leaderboardEntries.innerHTML = scores
+    .map((s, i) => {
+      const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+      return `<div class="lb-entry">
+        <span class="lb-rank ${rankClass}">#${i + 1}</span>
+        <span class="lb-name">${escapeHtml(s.name)}</span>
+        <span class="lb-score">${s.score.toLocaleString()}</span>
+      </div>`;
+    })
+    .join('');
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
 
 function init() {
     player = new Player();
@@ -352,15 +424,48 @@ function startGame() {
 
 function gameOver() {
     gameState = 'gameover';
-    
+    scoreSubmitted = false;
+
     if (score > highScore) {
         highScore = score;
         localStorage.setItem('fartRocketHighScore', highScore);
         highScoreEl.textContent = `Best: ${highScore}`;
     }
-    
+
     finalScoreEl.textContent = `Score: ${score}`;
+
+    currentSillyName = generateSillyName();
+    nicknameInput.value = '';
+    nicknameInput.placeholder = `e.g. ${currentSillyName}`;
+    submitScoreBtn.disabled = false;
+    submitScoreBtn.textContent = 'SUBMIT SCORE';
+    submitStatus.textContent = '';
     gameOverScreen.classList.remove('hidden');
+
+    fetchLeaderboard().then((scores) => renderLeaderboard(scores));
+}
+
+async function handleScoreSubmit() {
+  if (scoreSubmitted) return;
+  scoreSubmitted = true;
+  submitScoreBtn.disabled = true;
+  submitScoreBtn.textContent = 'SUBMITTING...';
+  submitStatus.textContent = '';
+
+  const name = nicknameInput.value.trim() || currentSillyName;
+
+  const result = await submitScore(name, score);
+
+  if (result && result.success) {
+    submitStatus.textContent = `Score submitted! Rank: #${result.rank}`;
+    const scores = await fetchLeaderboard();
+    renderLeaderboard(scores);
+  } else {
+    submitStatus.textContent = 'Could not reach leaderboard. Try again later.';
+    scoreSubmitted = false;
+    submitScoreBtn.disabled = false;
+    submitScoreBtn.textContent = 'SUBMIT SCORE';
+  }
 }
 
 function handleInput(e) {
@@ -387,5 +492,6 @@ canvas.addEventListener('touchstart', (e) => {
 
 startBtn.addEventListener('click', startGame);
 restartBtn.addEventListener('click', startGame);
+submitScoreBtn.addEventListener('click', handleScoreSubmit);
 
 gameLoop();
