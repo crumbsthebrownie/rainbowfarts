@@ -26,6 +26,7 @@ const SILLY_NAMES = [
 ];
 
 let gameState = 'start';
+let countdownTimer = 0;
 let score = 0;
 let highScore = parseInt(localStorage.getItem('fartRocketHighScore')) || 0;
 let gameSpeed = 3;
@@ -333,6 +334,13 @@ function drawBackground() {
 }
 
 function update() {
+    if (gameState === 'countdown') {
+        countdownTimer--;
+        if (countdownTimer <= 0) {
+            gameState = 'playing';
+        }
+        return;
+    }
     if (gameState !== 'playing') return;
 
     frameCount++;
@@ -404,8 +412,21 @@ function draw() {
     stars.forEach(s => s.draw());
     obstacles.forEach(o => o.draw());
     
-    if (gameState === 'playing') {
+    if (gameState === 'playing' || gameState === 'countdown') {
         player.draw();
+    }
+
+    if (gameState === 'countdown') {
+        const seconds = Math.ceil(countdownTimer / 60);
+        ctx.save();
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 120px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(seconds, canvas.width / 2, canvas.height / 2);
+        ctx.restore();
     }
 }
 
@@ -416,7 +437,8 @@ function gameLoop() {
 }
 
 function startGame() {
-    gameState = 'playing';
+    gameState = 'countdown';
+    countdownTimer = 300;
     startScreen.classList.add('hidden');
     gameOverScreen.classList.add('hidden');
     init();
