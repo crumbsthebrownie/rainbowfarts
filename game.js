@@ -435,8 +435,9 @@ function gameOver() {
     finalScoreEl.textContent = `Score: ${score}`;
 
     currentSillyName = generateSillyName();
-    nicknameInput.value = '';
-    nicknameInput.placeholder = `e.g. ${currentSillyName}`;
+    const savedNickname = localStorage.getItem('fartRocketNickname');
+    nicknameInput.value = savedNickname || '';
+    nicknameInput.placeholder = savedNickname ? 'Edit your nickname' : `e.g. ${currentSillyName}`;
     submitScoreBtn.disabled = false;
     submitScoreBtn.textContent = 'SUBMIT SCORE';
     submitStatus.textContent = '';
@@ -452,7 +453,14 @@ async function handleScoreSubmit() {
   submitScoreBtn.textContent = 'SUBMITTING...';
   submitStatus.textContent = '';
 
-  const name = nicknameInput.value.trim() || currentSillyName;
+  const customName = nicknameInput.value.trim();
+  const name = customName || currentSillyName;
+
+  if (customName) {
+    localStorage.setItem('fartRocketNickname', customName);
+  } else {
+    localStorage.removeItem('fartRocketNickname');
+  }
 
   const result = await submitScore(name, score);
 
