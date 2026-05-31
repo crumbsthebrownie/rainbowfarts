@@ -16,6 +16,8 @@ const startLeaderboardEntries = document.getElementById('startLeaderboardEntries
 const pauseBtn = document.getElementById('pauseBtn');
 
 const API_URL = 'https://fart-rocket-leaderboard.ian-link.workers.dev/api/scores';
+const API_BASE = 'https://fart-rocket-leaderboard.ian-link.workers.dev';
+let sessionToken = null;
 
 const SILLY_NAMES = [
   'Captain Farts', 'Star Sniffer', 'Cloud Crusher',
@@ -251,12 +253,12 @@ async function fetchLeaderboard() {
   }
 }
 
-async function submitScore(name, score) {
+async function submitScore(name, score, token) {
   try {
     const res = await fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, score }),
+      body: JSON.stringify({ name, score, token }),
     });
     if (!res.ok) return null;
     return await res.json();
@@ -265,14 +267,25 @@ async function submitScore(name, score) {
   }
 }
 
+async function startSession() {
+  try {
+    const res = await fetch(`${API_BASE}/api/start-session`, { method: 'POST' });
+    if (res.ok) {
+      const data = await res.json();
+      sessionToken = data.token;
+    }
+  } catch {}
+}
+
 function renderLeaderboard(scores) {
   const html = !scores || scores.length === 0
     ? '<div class="lb-empty">No scores yet — be the first!</div>'
     : scores
+      .slice(1)
       .map((s, i) => {
-        const rankClass = i === 0 ? 'gold' : i === 1 ? 'silver' : i === 2 ? 'bronze' : '';
+        const rankClass = i === 0 ? 'silver' : i === 1 ? 'bronze' : '';
         return `<div class="lb-entry">
-          <span class="lb-rank ${rankClass}">#${i + 1}</span>
+          <span class="lb-rank ${rankClass}">#${i + 2}</span>
           <span class="lb-name">${escapeHtml(s.name)}</span>
           <span class="lb-score">${s.score.toLocaleString()}</span>
         </div>`;
@@ -460,6 +473,7 @@ function startGame() {
     gameOverScreen.classList.add('hidden');
     init();
     fetchLeaderboard().then((scores) => renderLeaderboard(scores));
+    startSession();
 }
 
 function gameOver() {
@@ -514,7 +528,7 @@ async function handleScoreSubmit() {
     localStorage.removeItem('fartRocketNickname');
   }
 
-  const result = await submitScore(name, score);
+  const result = await submitScore(name, score, sessionToken);
 
   if (result && result.success) {
     submitStatus.textContent = `Score submitted! Rank: #${result.rank}`;
